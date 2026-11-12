@@ -1,7 +1,6 @@
 package dev.myvpn.personal
 
 import android.app.Activity
-import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -12,12 +11,14 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.util.concurrent.Executors
 
 /**
- * Offline configuration prototype. This version cannot connect to a VPN.
- * A real VPN service and tested transport will be added in a later milestone.
+ * Network diagnostics milestone.
+ * Does NOT create a VPN tunnel, and never claims to be connected.
  */
 class MainActivity : Activity() {
+    private val backgroundExecutor = Executors.newSingleThreadExecutor()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val density = resources.displayMetrics.density
@@ -26,62 +27,72 @@ class MainActivity : Activity() {
             setPadding((24 * density).toInt(), (36 * density).toInt(), (24 * density).toInt(), 0)
             setBackgroundColor(Color.rgb(12, 20, 34))
         }
-        fun label(message: String, size: Float, color: Int = Color.WHITE): TextView {
-            return TextView(this).apply {
-                text = message
+        fun label(value: String, size: Float, color: Int = Color.WHITE) =
+            TextView(this).apply {
+                text = value
                 textSize = size
                 setTextColor(color)
                 gravity = Gravity.CENTER_HORIZONTAL
             }
-        }
         root.addView(label("MyVPN", 30f).apply { setTypeface(null, Typeface.BOLD) })
-        root.addView(label("Личный VPN-клиент", 16f, Color.LTGRAY))
-        val status = label("VPN не подключён", 20f).apply {
-            setPadding(0, (48 * density).toInt(), 0, (24 * density).toInt())
+        root.addView(label("Диагностика VLESS Reality", 16f, Color.LTGRAY))
+        val status = label("VPN не подключён", 18f).apply {
+            setPadding(0, (40*density).toInt(), 0, (18*density).toInt())
         }
         root.addView(status)
-
         val link = EditText(this).apply {
-            hint = "Вставь ссылку vless://"
+            hint = "Вставь vless:// ссылку из 3x-ui"
             setHintTextColor(Color.GRAY)
             setTextColor(Color.WHITE)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setSingleLine(true)
         }
-        root.addView(
-            link,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-        link.setText(getPreferences(Context.MODE_PRIVATE).getString("vless", ""))
-
-        val save = Button(this).apply {
-            text = "Проверить и сохранить ссылку"
+        root.addView(link, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        var profile: VlessProfile? = null
+        val test = Button(this).apply {
+            text = "Проверить доступность VPS"
+            isEnabled = false
+        }
+        root.addView(Button(this).apply {
+            text = "Проверить конфигурацию"
             setOnClickListener {
-                val value = link.text.toString().trim()
-                val parsed = try {
-                    android.net.Uri.parse(value)
-                } catch (_: Exception) {
-                    null
+                try {
+                    profile = VlessProfile.parse(link.text.toString())
+                    val valid = profile!!
+                    // Ensure config is well-formed without exposing credentials in UI.
+                    valid.singBoxJson()
+                    status.text = "Reality-профиль распознан. VPN пока выключен."
+                    test.isEnabled = true
+                } catch (e: Exception) {
+                    profile = null
+                    test.isEnabled = false
+                    status.text = e.message ?: "Некорректная ссылка"
                 }
-                if (parsed?.scheme == "vless" && !parsed.host.isNullOrBlank() && parsed.port in 1..65535) {
-                    getPreferences(Context.MODE_PRIVATE).edit().putString("vless", value).apply()
-                    status.text = "Профиль сохранён локально"
-                } else {
-                    status.text = "Проверь формат ссылки VLESS"
+            }
+        })
+        root.addView(test)
+        test.setOnClickListener {
+            val value = profile ?: return@setOnClickListener
+            test.isEnabled = false
+            status.text = "Проверка TCP до VPS..."
+            backgroundExecutor.execute {
+                val message = NetworkProbe.test(value.host, value.port)
+                runOnUiThread {
+                    status.text = message
+                    test.isEnabled = true
                 }
             }
         }
-        root.addView(save)
         root.addView(label(
-            "Демо-версия: интерфейс и проверка VLESS-ссылки. VPN-движок ещё не подключён.",
-            14f,
-            Color.LTGRAY
-        ).apply {
-            setPadding(0, (32 * density).toInt(), 0, 0)
-        })
+            "Эта версия проверяет ссылку и доступность сервера. Реальное VPN-подключение появится после интеграции libbox.",
+            14f, Color.LTGRAY).apply {
+                setPadding(0, (26*density).toInt(), 0, 0)
+            })
         setContentView(root)
+    }
+    override fun onDestroy() {
+        backgroundExecutor.shutdownNow()
+        super.onDestroy()
     }
 }
