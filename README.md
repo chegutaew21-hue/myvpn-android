@@ -1,24 +1,19 @@
-# MyVPN for Android
+# MyVPN Android 0.3
 
-## Milestone 0.2 — VLESS Reality configuration and network diagnostics
+## WARP / WireGuard experimental milestone
 
-This project **is not yet a VPN client**. It builds an Android APK that:
-- Imports VLESS Reality TCP links **in memory** (no credentials saved in 0.2).
-- Validates UUID, server/port, Reality SNI and public key.
-- Generates a sing-box JSON configuration internally for future libbox integration.
-- Tests a TCP connection to the server on a background thread and displays the outcome.
+New: WireGuard tunnel implementation using official `com.wireguard.android:tunnel:1.0.20260102`.
 
-**TCP success is NOT proof that VLESS/Reality authentication works.** No packets are tunneled in 0.2.
+- Paste a valid **WireGuard-format WARP profile** (`[Interface]`, `[Peer]`).
+- Tap **Включить WARP**, approve Android VPN permission.
+- The app attempts to bring up a real WireGuard VPN tunnel and displays its state.
+- Tap **Выключить WARP** to stop.
+- VLESS Reality TCP diagnostics remain included.
 
-## Automated builds
+**This does not yet chain WARP → VLESS Reality.** Direct VLESS transport also remains unimplemented. Do not confuse WireGuard tunnel start with successful Cloudflare handshake: verify connectivity with https://www.cloudflare.com/cdn-cgi/trace (`warp=on`).
 
-GitHub Actions → Build Android APK → successful run → Artifacts → MyVPN-Android-prototype.
+**Config handling:** configuration is held in RAM only by the app, not saved to preferences or GitHub. Do not share your WARP private key or real VLESS URL in issues or screenshots. A WARP account's token is not a WireGuard config; obtain a complete authorized WireGuard profile separately. Legacy Cloudflare WARP WireGuard compatibility and reachability depend on account and network.
 
-## Next engineering milestone
+**Known limits:** VPN process may be terminated in background; no foreground control service, no persistent tunnel reconnection, no health check, no WARP registration in app, no chain with Reality. Next step: replace dual-engine concept with integrated VPN core that can route the VLESS dialer through a WireGuard endpoint. No guarantee that a blocked WARP UDP path works.
 
-- Integrate a supported Android libbox AAR + Android VpnService with lifecycle management.
-- Handle socket protection to avoid VPN routing loops; ensure DNS and network changes behave correctly.
-- Confirm VLESS Reality on a physical Android device before adding WARP -> VLESS chaining.
-- Implement encrypted storage, QR import, auto reconnect and sanitized logs.
-
-Never commit private keys or raw VLESS links. For safety, version 0.2 never persists submitted credentials.
+GitHub Actions builds APK debug artifact via `Build Android APK`.
