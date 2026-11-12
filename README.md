@@ -25,3 +25,11 @@ The **Создать WARP автоматически** button generates WireGuar
 This can fail if Cloudflare changes or blocks third-party registration. It is not guaranteed to work on current accounts, and even a successful registration will not necessarily connect from a filtered network. This release still has WARP-only mode: **WARP → VLESS is not implemented**.
 
 To verify WARP connectivity after starting the tunnel, open https://www.cloudflare.com/cdn-cgi/trace and check `warp=on`.
+
+## 0.5 connectivity safety fix
+
+Previous versions treated WireGuard's `UP` state as successful Cloudflare connectivity. This was incorrect: the interface can be up even if there is no handshake and all routed Internet traffic is blackholed.
+
+On connection, the app now requests a Cloudflare trace URL **inside the tunnel** and looks for `warp=on`. If no usable response is returned within bounded time, MyVPN automatically brings down the tunnel to restore direct Internet access.
+
+This does not solve UDP filtering or guarantee connection and does not implement WARP → VLESS chaining. Please upgrade and do not send raw WireGuard profiles/screenshots with private keys.
