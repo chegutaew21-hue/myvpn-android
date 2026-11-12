@@ -62,6 +62,39 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
         }
         root.addView(warpConfig, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        root.addView(Button(this).apply {
+            text = "Создать WARP автоматически (экспериментально)"
+            setOnClickListener {
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Регистрация WARP")
+                    .setMessage(
+                        "Будет создан новый ключ на телефоне и отправлен его публичный ключ " +
+                        "в Cloudflare через неофициальный API. Перед продолжением ознакомься " +
+                        "с условиями Cloudflare: https://www.cloudflare.com/application/terms/ . " +
+                        "API может перестать работать. Продолжить?"
+                    )
+                    .setNegativeButton("Отмена", null)
+                    .setPositiveButton("Согласен") { _, _ ->
+                        status.text = "Регистрирую устройство WARP..."
+                        this.isEnabled = false
+                        val button = this
+                        executor.execute {
+                            val result = runCatching { WarpRegistration.register() }
+                            runOnUiThread {
+                                button.isEnabled = true
+                                result.onSuccess { config ->
+                                    warpConfig.setText(config)
+                                    status.text = "WARP-профиль создан. Нажми «Включить WARP»."
+                                }.onFailure { e ->
+                                    status.text = "Не удалось создать профиль: " +
+                                        (e.message?.take(140) ?: e.javaClass.simpleName)
+                                }
+                            }
+                        }
+                    }
+                    .show()
+            }
+        })
         warpButton = Button(this).apply {
             text = "Включить WARP"
             setOnClickListener {
