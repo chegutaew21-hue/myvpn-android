@@ -1,25 +1,24 @@
 # MyVPN for Android
 
-Personal Android VPN client project.
+## Milestone 0.2 — VLESS Reality configuration and network diagnostics
 
-## Current milestone: 0.1 (prototype only)
+This project **is not yet a VPN client**. It builds an Android APK that:
+- Imports VLESS Reality TCP links **in memory** (no credentials saved in 0.2).
+- Validates UUID, server/port, Reality SNI and public key.
+- Generates a sing-box JSON configuration internally for future libbox integration.
+- Tests a TCP connection to the server on a background thread and displays the outcome.
 
-- Android UI shell.
-- Basic local VLESS URL input and validation.
-- GitHub Actions builds an unsigned-for-distribution **debug APK**, signed with Android's generated debug key.
-- **Does not connect to VPN yet.**
+**TCP success is NOT proof that VLESS/Reality authentication works.** No packets are tunneled in 0.2.
 
-## Next milestones
+## Automated builds
 
-1. Integrate actively maintained VPN engine and Android VpnService.
-2. Implement and test direct VLESS Reality on an Android device.
-3. Test WARP as upstream transport and build WARP → VLESS chaining.
-4. Add secure credential storage, diagnostic logs, and connection controls.
+GitHub Actions → Build Android APK → successful run → Artifacts → MyVPN-Android-prototype.
 
-**Security:** Never commit VLESS URLs, credentials, WARP private keys, or configuration exports into this repository. Prototype stores entered URL in app-private SharedPreferences, which is not encrypted. Do not enter sensitive production credentials yet.
+## Next engineering milestone
 
-## APK
+- Integrate a supported Android libbox AAR + Android VpnService with lifecycle management.
+- Handle socket protection to avoid VPN routing loops; ensure DNS and network changes behave correctly.
+- Confirm VLESS Reality on a physical Android device before adding WARP -> VLESS chaining.
+- Implement encrypted storage, QR import, auto reconnect and sanitized logs.
 
-Go to **Actions → Build Android APK → latest successful run → Artifacts → MyVPN-Android-prototype**.
-
-An APK build succeeding does **not** prove VPN connectivity. Device testing will be necessary once transport is implemented.
+Never commit private keys or raw VLESS links. For safety, version 0.2 never persists submitted credentials.
