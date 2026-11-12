@@ -95,6 +95,21 @@ class MainActivity : Activity() {
                     .show()
             }
         })
+        root.addView(Button(this).apply {
+            text = "Проверить доступность API Cloudflare"
+            setOnClickListener {
+                val button = this
+                button.isEnabled = false
+                status.text = "Проверяю api.cloudflareclient.com..."
+                executor.execute {
+                    val response = WarpRegistration.probe()
+                    runOnUiThread {
+                        button.isEnabled = true
+                        status.text = response
+                    }
+                }
+            }
+        })
         warpButton = Button(this).apply {
             text = "Включить WARP"
             setOnClickListener {
