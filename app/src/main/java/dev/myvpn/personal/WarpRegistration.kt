@@ -4,6 +4,10 @@ import com.wireguard.crypto.KeyPair
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.net.ConnectException
+import javax.net.ssl.SSLException
 import java.time.Instant
 
 /**
@@ -25,8 +29,8 @@ object WarpRegistration {
 
         val connection = URL("https://api.cloudflareclient.com/v0a2158/reg")
             .openConnection() as HttpURLConnection
-        connection.connectTimeout = 10000
-        connection.readTimeout = 15000
+        connection.connectTimeout = 12000
+        connection.readTimeout = 20000
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
@@ -77,6 +81,23 @@ object WarpRegistration {
                 Endpoint = $endpoint
                 PersistentKeepalive = 25
             """.trimIndent()
+        } catch (e: SocketTimeoutException) {
+            throw IllegalStateException(
+                "Cloudflare не ответил вовремя. Попробуй другую сеть. " +
+                "Возможна фильтрация api.cloudflareclient.com.", e
+            )
+        } catch (e: UnknownHostException) {
+            throw IllegalStateException(
+                "Не удалось определить адрес Cloudflare (ошибка DNS).", e
+            )
+        } catch (e: ConnectException) {
+            throw IllegalStateException(
+                "Нет TCP-соединения с Cloudflare. Проверь сеть.", e
+            )
+        } catch (e: SSLException) {
+            throw IllegalStateException(
+                "Не установлено защищённое TLS-соединение с Cloudflare.", e
+            )
         } finally {
             connection.disconnect()
         }
