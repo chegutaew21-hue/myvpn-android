@@ -19,6 +19,32 @@ import java.time.Instant
  * Only the public key is transmitted; resulting config is held in memory only.
  */
 object WarpRegistration {
+    /**
+     * Basic reachability test. Any HTTP status confirms an HTTP response;
+     * it does NOT prove the undocumented registration endpoint accepts POST.
+     */
+    fun probe(): String {
+        val connection = URL("https://api.cloudflareclient.com/v0a2158/reg")
+            .openConnection() as HttpURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.requestMethod = "GET"
+        try {
+            val status = connection.responseCode
+            return "Cloudflare API ответил: HTTP $status. Регистрация ещё не проверена."
+        } catch (e: SocketTimeoutException) {
+            return "Cloudflare API не отвечает (таймаут). Возможна фильтрация сети."
+        } catch (e: UnknownHostException) {
+            return "Не удалось определить адрес Cloudflare (DNS)."
+        } catch (e: SSLException) {
+            return "Не удалось установить TLS-соединение с Cloudflare."
+        } catch (e: Exception) {
+            return "Ошибка доступа к API: ${e.javaClass.simpleName}."
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun register(): String {
         val keys = KeyPair()
         val payload = JSONObject()
